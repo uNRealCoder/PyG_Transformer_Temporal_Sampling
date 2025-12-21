@@ -24,7 +24,7 @@ https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laun
 ├── GNN_model.py              # Custom GNN model definition
 ├── custom_earlystop.py       # Early stopping utility for training
 ├── processed_data/           # Preprocessed data and mappings
-├── archive/                  # Raw data files
+├── archive/                  # Raw data files: You need to download this from above URL.
 ```
 
 ## How It Works
@@ -44,14 +44,10 @@ https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laun
 
 1. **Clone the repo**:
    ```bash
-   git clone 
-   cd aml-gnn
+   git clone https://github.com/uNRealCoder/PyG_Transformer_Temporal_Sampling.git
    ```
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Run the notebooks** in order (1 → 4) to preprocess data, train models, and evaluate results.
+
+2. **Run the notebooks** in order (1 → 4) to preprocess data, train models, and evaluate results.
 
 ## Results
 
