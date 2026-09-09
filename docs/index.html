@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AML·GNN Results</title>
+<meta name="description" content="Detecting money laundering by modeling transactions as a graph: baseline XGBoost vs a Graph Transformer, on the IBM AML dataset." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink:      #12131f;
+    --panel:    #1a1c2b;
+    --panel-2:  #21243a;
+    --line:     #323655;
+    --text:     #eae7dd;
+    --dim:      #9599b0;
+    --flag:     #e6a54c;
+    --clean:    #66aaa0;
+    --miss:     #d9694e;
+    --display:  "Space Grotesk", system-ui, sans-serif;
+    --body:     "IBM Plex Sans", system-ui, sans-serif;
+    --mono:     "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: var(--body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: clamp(2rem, 6vw, 5rem) clamp(1.1rem, 5vw, 2rem) 4rem;
+  }
+
+  section { animation: rise .5s ease both; }
+  section:nth-of-type(2) { animation-delay: .05s; }
+  section:nth-of-type(3) { animation-delay: .1s; }
+  section:nth-of-type(4) { animation-delay: .15s; }
+  section:nth-of-type(5) { animation-delay: .2s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  @media (prefers-reduced-motion: reduce) {
+    section { animation: none; }
+  }
+
+  /* ---- eyebrow / header ---- */
+  .eyebrow {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--dim);
+    border-bottom: 1px solid var(--line);
+    padding-bottom: .8rem;
+  }
+  .eyebrow a { color: var(--dim); text-decoration: none; }
+  .eyebrow a:hover { color: var(--flag); }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(1.9rem, 6vw, 2.9rem);
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    margin: 2.2rem 0 0;
+  }
+  h1 em {
+    font-style: normal;
+    color: var(--flag);
+  }
+  .dek {
+    color: var(--dim);
+    max-width: 46ch;
+    margin: 1rem 0 0;
+  }
+
+  h2 {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: .74rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin: 3.4rem 0 1.2rem;
+  }
+
+  /* ---- detection rate tracks ---- */
+  .track { margin: 1.4rem 0; }
+  .track-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: .92rem;
+    margin-bottom: .5rem;
+  }
+  .track-head .model { font-family: var(--display); font-weight: 500; }
+  .track-head .count { font-family: var(--mono); font-size: .8rem; color: var(--dim); }
+  .rail {
+    position: relative;
+    height: 30px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    background-image: repeating-linear-gradient(90deg, transparent 0 9px, rgba(255,255,255,.03) 9px 10px);
+  }
+  .fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--flag);
+    min-width: 3px;
+  }
+  .fill.faint { background: var(--miss); }
+  .pct {
+    font-family: var(--mono);
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .caveat {
+    font-size: .82rem;
+    color: var(--dim);
+    border-left: 2px solid var(--line);
+    padding-left: .9rem;
+    margin-top: 1.8rem;
+  }
+
+  /* ---- confusion matrices ---- */
+  .matrices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.4rem;
+  }
+  @media (max-width: 540px) { .matrices { grid-template-columns: 1fr; } }
+
+  .cm-title {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: .95rem;
+    margin-bottom: .7rem;
+  }
+  .cm {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border: 1px solid var(--line);
+  }
+  .cell {
+    padding: .8rem .6rem;
+    border: 1px solid var(--line);
+    margin: -0.5px;
+    text-align: center;
+  }
+  .cell .n {
+    font-family: var(--mono);
+    font-size: clamp(.82rem, 2.7vw, 1rem);
+    display: block;
+  }
+  .cell .lab {
+    font-size: .64rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+  .cell.tn { background: rgba(102,170,160,.16); }
+  .cell.fp { background: rgba(217,105,78,.10); }
+  .cell.fn { background: rgba(217,105,78,.16); }
+  .cell.tp {
+    background: rgba(230,165,76,.16);
+    outline: 1px solid var(--flag);
+    outline-offset: -1px;
+  }
+  .cm-axis {
+    font-family: var(--mono);
+    font-size: .66rem;
+    color: var(--dim);
+    margin-top: .5rem;
+    letter-spacing: .04em;
+  }
+
+  /* ---- metrics table ---- */
+  .table-scroll { overflow-x: auto; }
+  table {
+    width: 100%;
+    min-width: 360px;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: .84rem;
+  }
+  th, td {
+    text-align: right;
+    padding: .7rem .4rem;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  th:first-child, td:first-child { text-align: left; font-family: var(--body); }
+  thead th {
+    font-size: .68rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    font-weight: 500;
+  }
+  td.hi { color: var(--flag); }
+
+  /* ---- feature bars ---- */
+  .feat {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    align-items: center;
+    gap: .8rem;
+    margin: .55rem 0;
+    font-size: .84rem;
+  }
+  .feat .name { color: var(--dim); font-family: var(--mono); font-size: .78rem; }
+  .feat .bar {
+    height: 8px;
+    background: var(--clean);
+    opacity: .8;
+  }
+
+  /* ---- footer ---- */
+  footer {
+    margin-top: 4rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: .76rem;
+    color: var(--dim);
+    display: grid;
+    gap: .5rem;
+  }
+  footer div { overflow-wrap: anywhere; }
+  footer a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
+  footer a:hover { color: var(--flag); border-color: var(--flag); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">
+      <span>AML · GNN</span>
+      <span><a href="https://github.com/uNRealCoder/PyG_Transformer_Temporal_Sampling">source &nearr;</a></span>
+    </div>
+    <h1>Catching laundering by the <em>company an account keeps</em></h1>
+    <p class="dek">
+      The IBM anti-money-laundering dataset is about 0.9% laundering. A gradient-boosted
+      baseline copes by calling almost everything clean. Modeling the same transactions as a
+      graph and passing messages along the money trail moves the needle on the metric that matters:
+      how much laundering you actually catch.
+    </p>
+  </header>
+
+  <section>
+    <h2>Detection rate &mdash; recall on the held-out split</h2>
+
+    <div class="track">
+      <div class="track-head">
+        <span class="model">XGBoost baseline</span>
+        <span class="count">2 of 1,033 laundering cases</span>
+      </div>
+      <div class="rail">
+        <div class="fill faint" style="width:1.5%"></div>
+        <span class="pct">0.19%</span>
+      </div>
+    </div>
+
+    <div class="track">
+      <div class="track-head">
+        <span class="model">Graph Transformer</span>
+        <span class="count">125 of 2,201 laundering nodes</span>
+      </div>
+      <div class="rail">
+        <div class="fill" style="width:5.7%"></div>
+        <span class="pct">5.7%</span>
+      </div>
+    </div>
+
+    <p class="caveat">
+      Not a controlled benchmark. The baseline scores individual transactions; the graph model
+      scores account nodes on a later graph build with its own split. Read it as direction of
+      travel &mdash; roughly a 30&times; jump in recall &mdash; not a like-for-like score.
+    </p>
+  </section>
+
+  <section>
+    <h2>Confusion &mdash; where each model lands</h2>
+    <div class="matrices">
+
+      <div>
+        <div class="cm-title">XGBoost baseline</div>
+        <div class="cm">
+          <div class="cell tn"><span class="n">1,217,767</span><span class="lab">true clean</span></div>
+          <div class="cell fp"><span class="n">3</span><span class="lab">false flag</span></div>
+          <div class="cell fn"><span class="n">1,031</span><span class="lab">missed</span></div>
+          <div class="cell tp"><span class="n">2</span><span class="lab">caught</span></div>
+        </div>
+        <div class="cm-axis">rows: actual &nbsp;·&nbsp; cols: predicted</div>
+      </div>
+
+      <div>
+        <div class="cm-title">Graph Transformer</div>
+        <div class="cm">
+          <div class="cell tn"><span class="n">349,822</span><span class="lab">true clean</span></div>
+          <div class="cell fp"><span class="n">4,371</span><span class="lab">false flag</span></div>
+          <div class="cell fn"><span class="n">2,076</span><span class="lab">missed</span></div>
+          <div class="cell tp"><span class="n">125</span><span class="lab">caught</span></div>
+        </div>
+        <div class="cm-axis">rows: actual &nbsp;·&nbsp; cols: predicted</div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <h2>Metrics side by side</h2>
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>XGBoost baseline</td><td>0.9992</td><td>0.400</td><td>0.0019</td><td>0.0039</td></tr>
+        <tr><td>Graph Transformer</td><td>0.9819</td><td>0.028</td><td class="hi">0.0568</td><td class="hi">0.0373</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="caveat">
+      The graph model gives up headline accuracy and precision &mdash; it raises far more false
+      flags &mdash; to roughly triple its F1 and catch laundering the baseline never sees. On a
+      problem this imbalanced, a 99.9%-accurate model that finds two cases in a thousand is the
+      trap, not the target.
+    </p>
+  </section>
+
+  <section>
+    <h2>What the baseline leans on &mdash; XGBoost gain</h2>
+    <div class="feat"><span class="name">Same bank</span><span class="bar" style="width:100%"></span></div>
+    <div class="feat"><span class="name">Day of month</span><span class="bar" style="width:77%"></span></div>
+    <div class="feat"><span class="name">Payment format</span><span class="bar" style="width:74%"></span></div>
+    <div class="feat"><span class="name">Amount received</span><span class="bar" style="width:24%"></span></div>
+    <div class="feat"><span class="name">Receiving currency</span><span class="bar" style="width:23%"></span></div>
+    <p class="caveat">
+      The baseline keys on bookkeeping artifacts &mdash; whether both accounts share a bank, when
+      the transaction posted. The graph model is handed no such shortcuts: every node starts from
+      the same constant feature, so anything it learns comes from the shape of the money flow itself.
+    </p>
+  </section>
+
+  <footer>
+    <div>Data &mdash; <a href="https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml">IBM Transactions for Anti-Money Laundering</a> (HI-Small)</div>
+    <div>Graph &mdash; ~514K account nodes, ~4.1M transaction edges, 13 edge features</div>
+    <div>Model &mdash; 2&times; PyG TransformerConv with edge attributes, structure-only node inputs</div>
+    <div>Code &mdash; <a href="https://github.com/uNRealCoder/PyG_Transformer_Temporal_Sampling">github.com/uNRealCoder/PyG_Transformer_Temporal_Sampling</a></div>
+  </footer>
+
+</div>
+</body>
+</html>
